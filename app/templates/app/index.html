@@ -1,16 +1,78 @@
 <head>
 <style type="text/css">
+
+body{min-width:1020px;font:13px/1.4 Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";color:#333;background-color:#fff}a{color:#4183c4;text-decoration:none}
+
+#payload_editor
+{
+	width: 600px;
+	height: 400px;
+	border: 3px solid #cccccc;
+	padding: 5px;
+	font: normal 1em Verdana, sans-serif;
+	background-position: bottom right;
+	background-repeat: no-repeat;
+
+}
+
+.exampleText
+{
+	font: normal 2em Verdana, sans-serif;
+	color:#bbb;
+	margin-top: .2em;
+	margin-bottom: .2em;
+}
+
+#payload_div
+{
+	 max-width: 600px;
+	float:left;
+}
+
+#services
+{
+	float:right;
+	width:400px;
+}
+
 #services ul
 {
-margin: 0;
-padding: 0;
-list-style-type: none;
+	margin: 0;
+	padding: 0;
+	list-style-type: none;
 }
+
 
 #services ul li { 
 	/*display: inline;*/
 	margin-top: 1.2em;
 }
+
+#recent ul
+{
+	margin: 0;
+	padding: 0;
+	list-style-type: none;
+	font: normal .8em Verdana, sans-serif;
+}
+
+#recent ul li {
+    /*border: 1px solid #000000;/*Black 1px border*/
+    background: #bbb;
+    margin-top: 1.2em;
+    padding: 1em;
+    white-space:pre;
+    overflow:hidden;
+}
+
+#recent ul li:hover {
+	background: #bfb;
+	cursor: pointer; cursor: hand;
+
+    /*margin-top: 1.2em;*/
+     /*#border: 2px dotted #ff0000; Red 2 pix dotted line border*/
+}
+
 /*
 #navcontainer ul li a
 {
@@ -23,16 +85,29 @@ padding: .2em 1em;
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script type="text/javascript">
 function send_to_devices(app_key, app_type) {
+	payload = $("#payload_editor").val()
+
 	$.ajax({
-		url: 'send_devices?app_key='+app_key + "&app_type="+app_type,
+		url: 'send_devices',
 
-		type: 'GET',
+		type: 'POST',
+		data: {
+			"app_key" : app_key,
+			"app_type" : app_type,
+			"payload" : payload
+		},
 
-		success: function(data) {
-         // alert("return: " + data)
-      }
 
-	});
+	}).done(function(jqXHR, textStatus) {
+     alert( "success "   + textStatus + " " + jqXHR.status);
+  })
+  .fail(function(jqXHR, textStatus) {
+     alert( "error " + textStatus );
+  })
+  .always(function() {
+  	update_recent();
+    // alert( "complete" );
+  });
 	// alert("Test " + app_key + " " + app_type);
 }
 
@@ -83,24 +158,84 @@ function add_device(service_id, app_key, app_type) {
 
 }
 
+function update_recent() {
+	$.ajax({
+		url: "recents",
+
+		type: 'GET',
+
+	}).done(function(jqXHR, textStatus) {
+
+		$('#recent_list').empty();
+
+		j = jqXHR;
+
+		$.each(j, function( index, value ) {
+
+			entry = $("<li>" + value.text + "</li>");
+			entry.click(function() {
+				$("#payload_editor").val(value.text);
+				// alert("click");
+			});
+
+
+			$("#recent_list").append(entry);
+		});
+
+		//alert(j.text);
+    // alert( "success "   + textStatus + " " + jqXHR.status);
+  })
+  .fail(function(jqXHR, textStatus) {
+    // alert( "error " + textStatus );
+  })
+  .always(function() {
+    // alert( "complete" );
+  });;
+}
+
+$( document ).ready(function() {
+    update_recent();    
+});
+
 </script>
 </head>
+<body>
 
-<h1>Services:</h1>
-<div id="services">
-<ul>
-{% for service in services %}
-    <li><b>{{ service.name }}</b><br />
-    	<button type="button" onClick="send_to_devices('{{ service.app_key }}', '{{ service.app_type }}')">Send</button>
+<div id="payload_div">
+	<div class="exampleText">"notification" : {</div>
+	<textarea id="payload_editor" placeholder="Enter payload here">{{lastpayload.text}}</textarea>
+	<div class="exampleText">}</div>
 
-    	<input type="text" size="24" id="device_id_text{{service.id}}"/>
+	<h3>Recent</h3>
+	<div id="recent">
 
-    	<button type="button" id="addButton{{service.id}}" onClick="add_device('{{ service.id }}','{{ service.app_key }}', '{{ service.app_type }}')">Add</button>
+	<ul id="recent_list">
+		<li>text...
+		</li>
 
-    	<span id="status{{service.id}}">Status</span>
-    </li>
-{% endfor %}
-</ul>
+		<li>entry 2...
+		</li>
+
+	</ul>
+
+	</div>
 </div>
 
-<!-- TODO: Simple form for adding a device ID into the database! -->
+
+<div id="services">
+	<h1>Services:</h1>
+	<ul>
+	{% for service in services %}
+	    <li><b>{{ service.name }}</b><br />
+	    	<button type="button" onClick="send_to_devices('{{ service.app_key }}', '{{ service.app_type }}')">Send</button>
+
+	    	<input type="text" size="24" id="device_id_text{{service.id}}"/>
+
+	    	<button type="button" id="addButton{{service.id}}" onClick="add_device('{{ service.id }}','{{ service.app_key }}', '{{ service.app_type }}')">Add</button>
+
+	    	<span id="status{{service.id}}">Status</span>
+	    </li>
+	{% endfor %}
+	</ul>
+</div>
+</body>

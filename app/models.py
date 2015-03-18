@@ -22,3 +22,7 @@ class PushService(models.Model):
 
 	is_production = models.BooleanField(default=False)
 
+class Payload(models.Model):
+
+	text = models.CharField(max_length=2048)
+	added_date = models.DateTimeField(auto_now_add=True, blank=True)

@@ -2,6 +2,9 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.template import RequestContext, loader
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
+import datetime
+
 import json
 # Create your views here.
 import re
@@ -17,9 +20,16 @@ from requests.auth import HTTPBasicAuth
 def test(request):
     return HttpResponse('This is a test')
 
+def get_recent(request):
+	recent = Payload.objects.all().order_by('-added_date')[:10]
+# 
+	j = []
+	for r in recent:
+		o = { "text": r.text }
+		j.append(o)
 
-# http://127.0.0.1:8000/app/add_apid?apid=eff29472-27e9-4f54-b047-68531dbe7a92&app_type=android&app_key=Lkm6fvwiRW6M6y5EZ2d6cg
-# http://127.0.0.1:8000/app/add_apid?apid=26fd30ec-9074-45c7-9af2-db66cef9adf8&app_type=android&app_key=70b0RZIpTYe_S9wLSrHxKg
+	return HttpResponse(json.dumps(j), content_type="application/json")
+
 
 
 def add_apid(request):
@@ -31,17 +41,17 @@ def add_apid(request):
 	app_appkey = request.GET.get('app_key')
 
 	if not apid:
-		response.code = 400
+		response.status_code = 400
 		response.write("apid not found")
 		return response
 
 	if app_type == None or app_type != "android":
-		response.code = 400
+		response.status_code = 400
 		response.write("app_type missing or invalid")
 		return response
 
 	if app_appkey == None:
-		response.code = 400
+		response.status_code = 400
 		response.write("app_key missing")
 		return response
 
@@ -49,7 +59,7 @@ def add_apid(request):
 	m = re.match(pattern, apid)
 		
 	if m == None:
-		response.code = 400
+		response.status_code = 400
 		response.write("apid invalid")
 		return response
 
@@ -60,7 +70,7 @@ def add_apid(request):
 	devices = Device.objects.filter(device_id=apid, type=app_type, appKey=app_appkey)
 
 	if devices.count() != 0:
-		response.code = 200
+		response.status_code = 200
 		response.write("already added")
 		return response;
 
@@ -90,27 +100,27 @@ def add_pushservice(request):
 	# 	response.write(key + ":" + value + "<br>")
 
 	if not name:
-		response.code = 400
+		response.status_code = 400
 		response.write("name not found")
 		return response
 
 	if not app_type or app_type != "android":
-		response.code = 400
+		response.status_code = 400
 		response.write("app_type missing or invalid")
 		return response
 
 	if not app_key:
-		response.code = 400
+		response.status_code = 400
 		response.write("app_key not found")
 		return response
 
 	if not app_secret:
-		response.code = 400
+		response.status_code = 400
 		response.write("app_secret not found")
 		return response
 
 	if not is_production:
-		response.code = 400
+		response.status_code = 400
 		response.write("is_production not found")
 		return response
 
@@ -134,22 +144,8 @@ def add_pushservice(request):
 
 	return response
 
-def getNotification():
-	extras = {}
-	extras["word"] = "ad hockery"
-	extras["partofspeech"] = "noun"
-	extras["shortdefinition"] = "excessive adulation of the mother and undue dependence on maternal care or protection."
-	extras["pronunciation"] = "MOM-iz-uhm"
-
-	android = {}
-	android["alert"] = "[FREE PROD [S]] Word of the Day: ad hockery"
-	android["extra"] = extras
-
-	return { "android" : android }
-
-def send_devices_by_service(service, response):
+def send_devices_by_service(service, response, payload_text):
 	devices = Device.objects.filter(appKey=service.app_key, type=service.app_type)
-
 
 	j = {}
 
@@ -159,10 +155,9 @@ def send_devices_by_service(service, response):
 
 	response.write("Number of devices: %d<br>" % + devices.count())
 
-	j["notification"] = getNotification()
+	j["notification"] = json.loads("{" + payload_text + "}")
 	j["audience"] = { 'OR' : arr_devices }
 	j["device_types"] = [service.app_type]
-
 
 	payload = json.dumps(j)
 
@@ -170,49 +165,90 @@ def send_devices_by_service(service, response):
 
 	r = requests.post("https://go.urbanairship.com/api/push/", data=payload, headers=headers, auth=HTTPBasicAuth(service.app_key, service.app_secret))
 
-	response.write("Response: " + r.text + "<br>")
-	response.write("Done<br>")
+	if r.status_code != 200:
+		response.status_code = 400
+		response.write("Error: " + r.text)
+	else:
+		response.write("Done<br>")
+
+	return response
 
 # send to devices for this given audience type and app key
 
 
 # requires app key and app type
+@csrf_exempt
 def send_devices(request):
 	response = HttpResponse()
 
-	app_type = request.GET.get('app_type')
-	app_key = request.GET.get('app_key')
+	app_type = request.POST.get('app_type')
+	app_key = request.POST.get('app_key')
+	payload = request.POST.get('payload')
 
 	if not app_key:
-		response.code = 400
+		response.status_code = 400
 		response.write("app_key not found")
 		return response
 
 	if not app_type:
-		response.code = 400
+		response.status_code = 400
 		response.write("app_type missing")
+		return response
+	
+	if not payload:
+		response.status_code = 400
+		response.write("payload missing")
 		return response
 
 	services = PushService.objects.filter(app_key=app_key, app_type=app_type)
 
 	if services.count() == 0:
-		response.code = 400
+		response.status_code = 400
 		response.write("no service found")
 		return response
 
 	service = services[0]
 
-	send_devices_by_service(service, response)
+	# If this payload is similar to the recent, bump it to the top
+	p = get_recent_payload(payload)
+	if p != None:
+		p.added_date = timezone.now()
+		p.save()
+	else:
+		payload_obj = Payload(text=payload)
+		payload_obj.save()
+
+	#remove old payloads
+	objs_to_delete = Payload.objects.all().order_by('-added_date')[10:]
+	for o in objs_to_delete:
+		o.delete()
+
+	response = send_devices_by_service(service, response, payload)
 
 	return response
+
+def get_recent_payload(text):
+	# returns the first 10 in the array...
+	recent = Payload.objects.all().order_by('-added_date')[:10]
+
+	for p in recent:
+		if(p.text == text):
+			return p
+
+	return None
+
+def recent_payload():
+	return Payload.objects.latest("added_date")
 
 def index(request):
 	
 	services = PushService.objects.all()
+	lastpayload = recent_payload
 
 	template = loader.get_template('app/index.html')
 	context = RequestContext(request, {
-		'services':services
+		'services':services,
+		'lastpayload':lastpayload
     })
 
 

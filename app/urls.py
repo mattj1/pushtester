@@ -5,6 +5,7 @@ import views
 # Create your views here.
 urlpatterns = patterns('',
 	url(r'^$', views.index, name='index'),
+	url(r'^recents', views.get_recent),
 	url(r'^add_apid', views.add_apid),
 	url(r'^add_pushservice', views.add_pushservice),
 
