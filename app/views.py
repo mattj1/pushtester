@@ -165,7 +165,7 @@ def send_devices_by_service(service, response, payload_text):
 
 	r = requests.post("https://go.urbanairship.com/api/push/", data=payload, headers=headers, auth=HTTPBasicAuth(service.app_key, service.app_secret))
 
-	if r.status_code != 200:
+	if r.status_code != 202:
 		response.status_code = 400
 		response.write("Error: " + r.text)
 	else:
