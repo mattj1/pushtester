@@ -1,8 +1,14 @@
 <head>
 <style type="text/css">
 
-body{min-width:1020px;font:13px/1.4 Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";color:#333;background-color:#fff}a{color:#4183c4;text-decoration:none}
+body{
+	min-width:1020px;font:13px/1.4 Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";color:#333;background-color:#fff}a{color:#4183c4;text-decoration:none}
 
+#container
+{
+	width:1020px;
+	margin:auto;
+}
 #payload_editor
 {
 	width: 600px;
@@ -200,6 +206,7 @@ $( document ).ready(function() {
 </script>
 </head>
 <body>
+<div id="container">
 
 <div id="payload_div">
 	<div class="exampleText">"notification" : {</div>
@@ -237,5 +244,6 @@ $( document ).ready(function() {
 	    </li>
 	{% endfor %}
 	</ul>
+</div>
 </div>
 </body>
