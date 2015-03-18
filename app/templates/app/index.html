@@ -1,96 +1,14 @@
 <head>
-<style type="text/css">
-
-body{
-	min-width:1020px;font:13px/1.4 Helvetica, arial, nimbussansl, liberationsans, freesans, clean, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol";color:#333;background-color:#fff}a{color:#4183c4;text-decoration:none}
-
-#container
-{
-	width:1020px;
-	margin:auto;
-}
-#payload_editor
-{
-	width: 600px;
-	height: 400px;
-	border: 3px solid #cccccc;
-	padding: 5px;
-	font: normal 1em Verdana, sans-serif;
-	background-position: bottom right;
-	background-repeat: no-repeat;
-
-}
-
-.exampleText
-{
-	font: normal 2em Verdana, sans-serif;
-	color:#bbb;
-	margin-top: .2em;
-	margin-bottom: .2em;
-}
-
-#payload_div
-{
-	 max-width: 600px;
-	float:left;
-}
-
-#services
-{
-	float:right;
-	width:400px;
-}
-
-#services ul
-{
-	margin: 0;
-	padding: 0;
-	list-style-type: none;
-}
-
-
-#services ul li { 
-	/*display: inline;*/
-	margin-top: 1.2em;
-}
-
-#recent ul
-{
-	margin: 0;
-	padding: 0;
-	list-style-type: none;
-	font: normal .8em Verdana, sans-serif;
-}
-
-#recent ul li {
-    /*border: 1px solid #000000;/*Black 1px border*/
-    background: #bbb;
-    margin-top: 1.2em;
-    padding: 1em;
-    white-space:pre;
-    overflow:hidden;
-}
-
-#recent ul li:hover {
-	background: #bfb;
-	cursor: pointer; cursor: hand;
-
-    /*margin-top: 1.2em;*/
-     /*#border: 2px dotted #ff0000; Red 2 pix dotted line border*/
-}
-
-/*
-#navcontainer ul li a
-{
-text-decoration: none;
-padding: .2em 1em;
-}
-*/
-</style>
+{% load staticfiles %}
+<link rel="stylesheet" type="text/css" href="{% static 'app/base.css' %}"/>
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script type="text/javascript">
-function send_to_devices(app_key, app_type) {
+function send_to_devices(service_id, app_key, app_type) {
+
+	sendButton = $("#sendButton"+service_id);
+	sendButton.prop("disabled",true);
+
 	payload = $("#payload_editor").val()
 
 	$.ajax({
@@ -112,6 +30,7 @@ function send_to_devices(app_key, app_type) {
   })
   .always(function() {
   	update_recent();
+  	sendButton.prop("disabled",false);
     // alert( "complete" );
   });
 	// alert("Test " + app_key + " " + app_type);
@@ -125,7 +44,6 @@ function add_device(service_id, app_key, app_type) {
 
 	apid = textinput.val()
 	url = 'add_apid?app_key=' + app_key + "&app_type="+app_type + "&apid="+apid;
-	// alert(url);
 
 	statustext.text("Setting...");
 
@@ -181,7 +99,6 @@ function update_recent() {
 			entry = $("<li>" + value.text + "</li>");
 			entry.click(function() {
 				$("#payload_editor").val(value.text);
-				// alert("click");
 			});
 
 
@@ -234,13 +151,13 @@ $( document ).ready(function() {
 	<ul>
 	{% for service in services %}
 	    <li><b>{{ service.name }}</b><br />
-	    	<button type="button" onClick="send_to_devices('{{ service.app_key }}', '{{ service.app_type }}')">Send</button>
+	    	<button type="button" id="sendButton{{service.id}}" onClick="send_to_devices('{{ service.id }}', '{{ service.app_key }}', '{{ service.app_type }}')">Send Test Push</button><br />
 
-	    	<input type="text" size="24" id="device_id_text{{service.id}}"/>
+	    	<input type="text" size="24" placeholder="Device ID" id="device_id_text{{service.id}}"/>
 
 	    	<button type="button" id="addButton{{service.id}}" onClick="add_device('{{ service.id }}','{{ service.app_key }}', '{{ service.app_type }}')">Add</button>
 
-	    	<span id="status{{service.id}}">Status</span>
+	    	<span id="status{{service.id}}"></span>
 	    </li>
 	{% endfor %}
 	</ul>
