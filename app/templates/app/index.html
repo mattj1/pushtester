@@ -1,0 +1,106 @@
+<head>
+<style type="text/css">
+#services ul
+{
+margin: 0;
+padding: 0;
+list-style-type: none;
+}
+
+#services ul li { 
+	/*display: inline;*/
+	margin-top: 1.2em;
+}
+/*
+#navcontainer ul li a
+{
+text-decoration: none;
+padding: .2em 1em;
+}
+*/
+</style>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script type="text/javascript">
+function send_to_devices(app_key, app_type) {
+	$.ajax({
+		url: 'send_devices?app_key='+app_key + "&app_type="+app_type,
+
+		type: 'GET',
+
+		success: function(data) {
+         // alert("return: " + data)
+      }
+
+	});
+	// alert("Test " + app_key + " " + app_type);
+}
+
+function add_device(service_id, app_key, app_type) {
+
+	textinput = $("#device_id_text"+service_id);
+	button = $("#addButton"+service_id);
+	statustext = $("#status"+service_id);
+
+	apid = textinput.val()
+	url = 'add_apid?app_key=' + app_key + "&app_type="+app_type + "&apid="+apid;
+	// alert(url);
+
+	statustext.text("Setting...");
+
+	textinput.attr('disabled','disabled');
+	button.prop("disabled",true);
+
+	$.ajax({
+		url: url,
+
+		type: 'GET',
+
+		success: function(jqXHR, textStatus, error ) {
+
+			 alert(error.status);
+
+			if(error.status == 200) {
+				statustext.text("Success: " + error.responseText )
+	          textinput.val("")
+	          // statustext.text("")
+			} else {
+				statustext.text("Fail: " + error.responseText )
+			}
+          
+
+     	},
+
+
+     	complete:function(data) {
+     		
+			textinput.removeAttr('disabled');
+
+			button.prop("disabled", false);
+     	}
+
+	});
+
+}
+
+</script>
+</head>
+
+<h1>Services:</h1>
+<div id="services">
+<ul>
+{% for service in services %}
+    <li><b>{{ service.name }}</b><br />
+    	<button type="button" onClick="send_to_devices('{{ service.app_key }}', '{{ service.app_type }}')">Send</button>
+
+    	<input type="text" size="24" id="device_id_text{{service.id}}"/>
+
+    	<button type="button" id="addButton{{service.id}}" onClick="add_device('{{ service.id }}','{{ service.app_key }}', '{{ service.app_type }}')">Add</button>
+
+    	<span id="status{{service.id}}">Status</span>
+    </li>
+{% endfor %}
+</ul>
+</div>
+
+<!-- TODO: Simple form for adding a device ID into the database! -->
