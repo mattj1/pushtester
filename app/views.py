@@ -17,20 +17,36 @@ import requests
 
 from requests.auth import HTTPBasicAuth
 
-def test(request):
-    return HttpResponse('This is a test')
+def is_valid_app_type(app_type):
+	return app_type in ["android", "ios"]
+
+def get_recent_payload(text, aps_text):
+	# returns the first 10 in the array...
+	recent = Payload.objects.all().order_by('-added_date')[:10]
+
+	for p in recent:
+		if(p.text == text and p.aps_text == aps_text):
+			return p
+
+	return None
+
+def recent_payload():
+	return Payload.objects.latest("added_date")
+
+# Views
 
 def get_recent(request):
 	recent = Payload.objects.all().order_by('-added_date')[:10]
 # 
 	j = []
 	for r in recent:
-		o = { "text": r.text }
+		o = { "text": r.text, "aps_text" : r.aps_text }
 		j.append(o)
 
 	return HttpResponse(json.dumps(j), content_type="application/json")
 
-
+def test(request):
+    return HttpResponse('This is a test')
 
 def add_apid(request):
 
@@ -45,7 +61,7 @@ def add_apid(request):
 		response.write("apid not found")
 		return response
 
-	if app_type == None or app_type != "android":
+	if not is_valid_app_type(app_type):
 		response.status_code = 400
 		response.write("app_type missing or invalid")
 		return response
@@ -55,7 +71,12 @@ def add_apid(request):
 		response.write("app_key missing")
 		return response
 
+
 	pattern = "[0-9a-f]{8}(-[0-9a-f]{4}){2}-[0-9a-f]{4}-[0-9a-f]{12}"
+	if app_type == "ios":
+		# pattern = "[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
+		pattern = "[0-9a-fA-F]{64}"
+
 	m = re.match(pattern, apid)
 		
 	if m == None:
@@ -104,7 +125,7 @@ def add_pushservice(request):
 		response.write("name not found")
 		return response
 
-	if not app_type or app_type != "android":
+	if not is_valid_app_type(app_type):
 		response.status_code = 400
 		response.write("app_type missing or invalid")
 		return response
@@ -144,23 +165,34 @@ def add_pushservice(request):
 
 	return response
 
-def send_devices_by_service(service, response, payload_text):
+def send_devices_by_service(service, response, payload_text, aps_payload_text):
 	devices = Device.objects.filter(appKey=service.app_key, type=service.app_type)
 
 	j = {}
 
+	apid_key = "apid"
+
+	if service.app_type == "ios":
+		apid_key="device_token"
+		# apid_key="ios_channel"
+
 	arr_devices = []
 	for device in devices:
-		arr_devices.append( { 'apid' : device.device_id } )
+		arr_devices.append( { apid_key : device.device_id } )
 
-	response.write("Number of devices: %d<br>" % + devices.count())
+	response.write("Number of devices: %d<br>" % devices.count() + "<br>")
+	response.write("%s %s" % ( service.app_type, service.app_key ) )
 
 	j["notification"] = json.loads("{" + payload_text + "}")
 	j["audience"] = { 'OR' : arr_devices }
 	j["device_types"] = [service.app_type]
 
+	# if aps_payload_text:
+	# 	j["aps"] = json.loads("{" + aps_payload_text + "}")
+
 	payload = json.dumps(j)
 
+	response.write("<br>Full payload: " + payload)
 	headers = {'Content-Type':'application/json', 'Accept' : 'application/vnd.urbanairship+json; version=3;'}
 
 	r = requests.post("https://go.urbanairship.com/api/push/", data=payload, headers=headers, auth=HTTPBasicAuth(service.app_key, service.app_secret))
@@ -184,21 +216,25 @@ def send_devices(request):
 	app_type = request.POST.get('app_type')
 	app_key = request.POST.get('app_key')
 	payload = request.POST.get('payload')
+	aps_payload = request.POST.get('aps_payload')
 
 	if not app_key:
 		response.status_code = 400
 		response.write("app_key not found")
 		return response
 
-	if not app_type:
+	if not is_valid_app_type(app_type):
 		response.status_code = 400
-		response.write("app_type missing")
+		response.write("app_type missing or invalid")
 		return response
 	
 	if not payload:
 		response.status_code = 400
 		response.write("payload missing")
 		return response
+
+	# if not aps_payload:
+		# aps_payload = None
 
 	services = PushService.objects.filter(app_key=app_key, app_type=app_type)
 
@@ -210,12 +246,12 @@ def send_devices(request):
 	service = services[0]
 
 	# If this payload is similar to the recent, bump it to the top
-	p = get_recent_payload(payload)
+	p = get_recent_payload(payload, aps_payload)
 	if p != None:
 		p.added_date = timezone.now()
 		p.save()
 	else:
-		payload_obj = Payload(text=payload)
+		payload_obj = Payload(text=payload, aps_text=aps_payload)
 		payload_obj.save()
 
 	#remove old payloads
@@ -223,27 +259,14 @@ def send_devices(request):
 	for o in objs_to_delete:
 		o.delete()
 
-	response = send_devices_by_service(service, response, payload)
+	response = send_devices_by_service(service, response, payload, aps_payload)
 
 	return response
-
-def get_recent_payload(text):
-	# returns the first 10 in the array...
-	recent = Payload.objects.all().order_by('-added_date')[:10]
-
-	for p in recent:
-		if(p.text == text):
-			return p
-
-	return None
-
-def recent_payload():
-	return Payload.objects.latest("added_date")
 
 def index(request):
 	
 	services = PushService.objects.all()
-	lastpayload = recent_payload
+	lastpayload = recent_payload()
 
 	template = loader.get_template('app/index.html')
 	context = RequestContext(request, {

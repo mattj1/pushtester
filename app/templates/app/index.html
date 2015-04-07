@@ -4,12 +4,14 @@
 
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script type="text/javascript">
+
 function send_to_devices(service_id, app_key, app_type) {
 
 	sendButton = $("#sendButton"+service_id);
 	sendButton.prop("disabled",true);
 
 	payload = $("#payload_editor").val()
+	aps_payload = $("#aps_payload_editor").val()
 
 	$.ajax({
 		url: 'send_devices',
@@ -18,7 +20,8 @@ function send_to_devices(service_id, app_key, app_type) {
 		data: {
 			"app_key" : app_key,
 			"app_type" : app_type,
-			"payload" : payload
+			"payload" : payload,
+			"aps_payload" : aps_payload
 		},
 
 
@@ -26,7 +29,7 @@ function send_to_devices(service_id, app_key, app_type) {
      // alert( "success "   + textStatus + " " + jqXHR.status);
   })
   .fail(function(jqXHR, textStatus) {
-     alert( "error " + textStatus );
+     alert( "Send returned error: " + jqXHR.responseText );
   })
   .always(function() {
   	update_recent();
@@ -96,9 +99,21 @@ function update_recent() {
 
 		$.each(j, function( index, value ) {
 
-			entry = $("<li>" + value.text + "</li>");
-			entry.click(function() {
+			if(typeof value.aps_text === "undefined" || value.aps_text == null) {
+				value.aps_text = ""
+			}
+
+			txt = value.text;
+
+			if(value.aps_text != "") 
+				txt += "<br/>aps: ---<br/>" + value.aps_text
+
+			entry = $("<li>" + txt + "</li>");
+
+			entry.click(function()
+			{
 				$("#payload_editor").val(value.text);
+				$("#aps_payload_editor").val(value.aps_text);
 			});
 
 
@@ -112,12 +127,29 @@ function update_recent() {
     // alert( "error " + textStatus );
   })
   .always(function() {
+  	    $('li').each(function(element){
+  	   //  	$(this).hover(
+	     //  		function() { $('#tooltip').show(); },
+	     //  		function() { $('#tooltip').hide(); }
+    		// );
+    	});
     // alert( "complete" );
   });;
 }
 
 $( document ).ready(function() {
-    update_recent();    
+
+	$(document).bind('mousemove', function(e){
+	    $('#tooltip').css({
+	       left:  e.pageX + 20,
+	       top:   e.pageY
+	    });
+	});
+
+    update_recent();
+    
+
+
 });
 
 </script>
@@ -127,7 +159,11 @@ $( document ).ready(function() {
 
 <div id="payload_div">
 	<div class="exampleText">"notification" : {</div>
-	<textarea id="payload_editor" placeholder="Enter payload here">{{lastpayload.text}}</textarea>
+	<textarea id="payload_editor" class="texteditor" placeholder="Enter payload here">{{lastpayload.text}}</textarea>
+	<div class="exampleText">}</div>
+
+	<div class="exampleText">"aps" : {</div>
+	<textarea id="aps_payload_editor" class="texteditor" placeholder="Enter payload here">{{ lastpayload.aps_text|default:"" }}</textarea>
 	<div class="exampleText">}</div>
 
 	<h3>Recent</h3>
@@ -163,4 +199,6 @@ $( document ).ready(function() {
 	</ul>
 </div>
 </div>
+
+<div id="tooltip">Tooltip info</div>
 </body>

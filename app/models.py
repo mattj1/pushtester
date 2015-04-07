@@ -25,4 +25,5 @@ class PushService(models.Model):
 class Payload(models.Model):
 
 	text = models.CharField(max_length=2048)
+	aps_text = models.CharField(max_length=2048, null=True)
 	added_date = models.DateTimeField(auto_now_add=True, blank=True)
