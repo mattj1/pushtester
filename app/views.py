@@ -20,12 +20,14 @@ from requests.auth import HTTPBasicAuth
 def is_valid_app_type(app_type):
 	return app_type in ["android", "ios"]
 
-def get_recent_payload(text, aps_text):
+def get_recent_payload(text):
+# def get_recent_payload(text, aps_text):
 	# returns the first 10 in the array...
 	recent = Payload.objects.all().order_by('-added_date')[:10]
 
 	for p in recent:
-		if(p.text == text and p.aps_text == aps_text):
+		# if(p.text == text and p.aps_text == aps_text):
+		if(p.text == text):
 			return p
 
 	return None
@@ -40,7 +42,8 @@ def get_recent(request):
 # 
 	j = []
 	for r in recent:
-		o = { "text": r.text, "aps_text" : r.aps_text }
+		# o = { "text": r.text, "aps_text" : r.aps_text }
+		o = { "text": r.text }
 		j.append(o)
 
 	return HttpResponse(json.dumps(j), content_type="application/json")
@@ -165,7 +168,8 @@ def add_pushservice(request):
 
 	return response
 
-def send_devices_by_service(service, response, payload_text, aps_payload_text):
+# def send_devices_by_service(service, response, payload_text, aps_payload_text):
+def send_devices_by_service(service, response, payload_text):
 	devices = Device.objects.filter(appKey=service.app_key, type=service.app_type)
 
 	j = {}
@@ -188,6 +192,7 @@ def send_devices_by_service(service, response, payload_text, aps_payload_text):
 	j["device_types"] = [service.app_type]
 
 	# if aps_payload_text:
+	# 	response.write("<br>added aps<br>")
 	# 	j["aps"] = json.loads("{" + aps_payload_text + "}")
 
 	payload = json.dumps(j)
@@ -216,7 +221,7 @@ def send_devices(request):
 	app_type = request.POST.get('app_type')
 	app_key = request.POST.get('app_key')
 	payload = request.POST.get('payload')
-	aps_payload = request.POST.get('aps_payload')
+	# aps_payload = request.POST.get('aps_payload')
 
 	if not app_key:
 		response.status_code = 400
@@ -246,12 +251,14 @@ def send_devices(request):
 	service = services[0]
 
 	# If this payload is similar to the recent, bump it to the top
-	p = get_recent_payload(payload, aps_payload)
+	# p = get_recent_payload(payload, aps_payload)
+	p = get_recent_payload(payload)
 	if p != None:
 		p.added_date = timezone.now()
 		p.save()
 	else:
-		payload_obj = Payload(text=payload, aps_text=aps_payload)
+		# payload_obj = Payload(text=payload, aps_text=aps_payload)
+		payload_obj = Payload(text=payload)
 		payload_obj.save()
 
 	#remove old payloads
@@ -259,7 +266,8 @@ def send_devices(request):
 	for o in objs_to_delete:
 		o.delete()
 
-	response = send_devices_by_service(service, response, payload, aps_payload)
+	# response = send_devices_by_service(service, response, payload, aps_payload)
+	response = send_devices_by_service(service, response, payload)
 
 	return response
 

@@ -11,7 +11,7 @@ function send_to_devices(service_id, app_key, app_type) {
 	sendButton.prop("disabled",true);
 
 	payload = $("#payload_editor").val()
-	aps_payload = $("#aps_payload_editor").val()
+//	aps_payload = $("#aps_payload_editor").val()
 
 	$.ajax({
 		url: 'send_devices',
@@ -20,8 +20,8 @@ function send_to_devices(service_id, app_key, app_type) {
 		data: {
 			"app_key" : app_key,
 			"app_type" : app_type,
-			"payload" : payload,
-			"aps_payload" : aps_payload
+			"payload" : payload/*,
+			"aps_payload" : aps_payload*/
 		},
 
 
@@ -99,21 +99,21 @@ function update_recent() {
 
 		$.each(j, function( index, value ) {
 
-			if(typeof value.aps_text === "undefined" || value.aps_text == null) {
-				value.aps_text = ""
-			}
+			// if(typeof value.aps_text === "undefined" || value.aps_text == null) {
+			// 	value.aps_text = ""
+			// }
 
 			txt = value.text;
 
-			if(value.aps_text != "") 
-				txt += "<br/>aps: ---<br/>" + value.aps_text
+			// if(value.aps_text != "") 
+			// 	txt += "<br/>aps:---<br/>" + value.aps_text
 
 			entry = $("<li>" + txt + "</li>");
 
 			entry.click(function()
 			{
 				$("#payload_editor").val(value.text);
-				$("#aps_payload_editor").val(value.aps_text);
+				// $("#aps_payload_editor").val(value.aps_text);
 			});
 
 
@@ -162,9 +162,9 @@ $( document ).ready(function() {
 	<textarea id="payload_editor" class="texteditor" placeholder="Enter payload here">{{lastpayload.text}}</textarea>
 	<div class="exampleText">}</div>
 
-	<div class="exampleText">"aps" : {</div>
+<!-- 	<div class="exampleText">"aps" : {</div>
 	<textarea id="aps_payload_editor" class="texteditor" placeholder="Enter payload here">{{ lastpayload.aps_text|default:"" }}</textarea>
-	<div class="exampleText">}</div>
+	<div class="exampleText">}</div> -->
 
 	<h3>Recent</h3>
 	<div id="recent">
